@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mini Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="chat-box">
+    <div class="chat-header">💬 Mini Chat</div>
+
+    <div class="messages" id="messages">
+    </div>
+
+    <div class="typing" id="typing"></div>
+
+    <div class="input-area">
+      <input type="text" id="messageInput" placeholder="Message likho...">
+      <button id="sendBtn">Send 💖</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Naam poochna
+    const username = prompt('Tumhara naam kya hai? 🌸') || 'Anonymous';
+
+    // Server ko batao ke main aa gayi
+    socket.emit('join', username);
+
+    const messages = document.getElementById('messages');
+    const input = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typingDiv = document.getElementById('typing');
+
+    // Abhi ka time nikalne wala function (jaise 11:30 PM)
+    function getTime() {
+      return new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    // Normal message dikhane wala function
+    function addMessage(text, type, name, time) {
+      const div = document.createElement('div');
+      div.classList.add('message', type);
+
+      if (name) {
+        const label = document.createElement('div');
+        label.classList.add('sender');
+        label.textContent = name;
+        div.appendChild(label);
+      }
+
+      const msgText = document.createElement('span');
+      msgText.textContent = text;
+      div.appendChild(msgText);
+
+      if (time) {
+        const timeLabel = document.createElement('div');
+        timeLabel.classList.add('time');
+        timeLabel.textContent = time;
+        div.appendChild(timeLabel);
+      }
+
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    // System notice dikhane wala function (joined / left)
+    function addSystemMessage(text) {
+      const div = document.createElement('div');
+      div.classList.add('system');
+      div.textContent = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    // Typing indicator ka timer
+    let typingTimeout;
+
+    function sendMessage() {
+      const text = input.value.trim();
+      if (text === '') return;
+
+      const time = getTime();
+
+      addMessage(text, 'mine', null, time);
+      socket.emit('chat message', { name: username, text: text, time: time });
+      socket.emit('stop typing');
+      clearTimeout(typingTimeout);
+      input.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Jab likhna shuru karo to server ko batao
+    input.addEventListener('input', () => {
+      socket.emit('typing');
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        socket.emit('stop typing');
+      }, 3000);
+    });
+
+    // Doosron ka message aaye to dikhao
+    socket.on('chat message', (data) => {
+      typingDiv.textContent = '';
+      addMessage(data.text, 'other', data.name, data.time);
+    });
+
+    // Koi joined ya left
+    socket.on('system message', (text) => {
+      addSystemMessage(text);
+    });
+
+    // Koi likh raha hai
+    socket.on('typing', (name) => {
+      typingDiv.textContent = name + ' is typing... ✍️';
+    });
+
+    socket.on('stop typing', () => {
+      typingDiv.textContent = '';
+    });
+  </script>
+
+</body>
+</html>
