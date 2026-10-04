@@ -10,6 +10,8 @@
   <div class="chat-box">
     <div class="chat-header">💬 Mini Chat</div>
 
+    <div class="online-bar" id="onlineBar">🟢 Online (0)</div>
+
     <div class="messages" id="messages">
     </div>
 
@@ -35,6 +37,7 @@
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const typingDiv = document.getElementById('typing');
+    const onlineBar = document.getElementById('onlineBar');
 
     // Abhi ka time nikalne wala function (jaise 11:30 PM)
     function getTime() {
@@ -120,6 +123,11 @@
     // Koi joined ya left
     socket.on('system message', (text) => {
       addSystemMessage(text);
+    });
+
+    // Online users ki nayi list aayi
+    socket.on('online users', (users) => {
+      onlineBar.textContent = '🟢 Online (' + users.length + '): ' + users.join(', ');
     });
 
     // Koi likh raha hai

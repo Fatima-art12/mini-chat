@@ -8,6 +8,9 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
+// Register: abhi kaun kaun online hai (socket id -> naam)
+const onlineUsers = {};
+
 io.on('connection', (socket) => {
   console.log('Ek user connect hua');
 
@@ -15,7 +18,12 @@ io.on('connection', (socket) => {
   socket.on('join', (name) => {
     console.log('Join hua:', name);
     socket.username = name;
+    onlineUsers[socket.id] = name;
+
     socket.broadcast.emit('system message', name + ' joined the chat 👋');
+
+    // Nayi online list sab ko bhejo
+    io.emit('online users', Object.values(onlineUsers));
   });
 
   // Message aaya to sab ko bhejo
@@ -37,9 +45,15 @@ io.on('connection', (socket) => {
   // Koi chala gaya
   socket.on('disconnect', () => {
     console.log('User chala gaya');
+
     if (socket.username) {
+      delete onlineUsers[socket.id];
+
       io.emit('system message', socket.username + ' left the chat 💔');
       io.emit('stop typing');
+
+      // Nayi online list sab ko bhejo
+      io.emit('online users', Object.values(onlineUsers));
     }
   });
 });
