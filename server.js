@@ -8,56 +8,65 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// Register: abhi kaun kaun online hai (socket id -> naam)
+// Register: who is online in which room (socket id -> { name, room })
 const onlineUsers = {};
 
+// Send the online list of one room to everyone in that room
+function sendOnlineList(room) {
+  const names = Object.values(onlineUsers)
+    .filter((user) => user.room === room)
+    .map((user) => user.name);
+
+  io.to(room).emit('online users', names);
+}
+
 io.on('connection', (socket) => {
-  console.log('Ek user connect hua');
+  console.log('A user connected');
 
-  // Koi naam bata ke chat mein aya
-  socket.on('join', (name) => {
-    console.log('Join hua:', name);
+  // Someone joined with a name and a room
+  socket.on('join', ({ name, room }) => {
+    console.log('Joined:', name, '| room:', room);
+
     socket.username = name;
-    onlineUsers[socket.id] = name;
+    socket.room = room;
+    socket.join(room);
+    onlineUsers[socket.id] = { name: name, room: room };
 
-    socket.broadcast.emit('system message', name + ' joined the chat 👋');
-
-    // Nayi online list sab ko bhejo
-    io.emit('online users', Object.values(onlineUsers));
+    // Tell only the people in that room
+    socket.to(room).emit('system message', name + ' joined the chat 👋');
+    sendOnlineList(room);
   });
 
-  // Message aaya to sab ko bhejo
+  // Message goes only to the same room
   socket.on('chat message', (data) => {
-    console.log('Server ko message mila:', data);
-    socket.broadcast.emit('chat message', data);
+    console.log('Server received message:', data);
+    socket.to(socket.room).emit('chat message', data);
   });
 
-  // Koi likh raha hai
+  // Someone is typing (only in the same room)
   socket.on('typing', () => {
-    socket.broadcast.emit('typing', socket.username);
+    socket.to(socket.room).emit('typing', socket.username);
   });
 
-  // Likhna band
+  // Stopped typing
   socket.on('stop typing', () => {
-    socket.broadcast.emit('stop typing');
+    socket.to(socket.room).emit('stop typing');
   });
 
-  // Koi chala gaya
+  // Someone left
   socket.on('disconnect', () => {
-    console.log('User chala gaya');
+    console.log('A user disconnected');
 
     if (socket.username) {
       delete onlineUsers[socket.id];
 
-      io.emit('system message', socket.username + ' left the chat 💔');
-      io.emit('stop typing');
-
-      // Nayi online list sab ko bhejo
-      io.emit('online users', Object.values(onlineUsers));
+      io.to(socket.room).emit('system message', socket.username + ' left the chat 💔');
+      io.to(socket.room).emit('stop typing');
+      sendOnlineList(socket.room);
     }
   });
 });
 
 server.listen(3000, () => {
-  console.log('Server chal raha hai: http://localhost:3000');
+  console.log('Server is running: http://localhost:3000');
 });

@@ -7,8 +7,27 @@
 </head>
 <body>
 
-  <div class="chat-box">
-    <div class="chat-header">💬 Mini Chat</div>
+  <!-- Join screen: name + room choose karne ki screen -->
+  <div class="join-box" id="joinScreen">
+    <div class="join-title">💬 Mini Chat</div>
+
+    <p class="join-label">What is your name?</p>
+    <input type="text" id="nameInput" placeholder="Your name..." maxlength="20">
+
+    <p class="join-label">Pick a room</p>
+    <div class="room-options" id="roomOptions">
+      <button class="room-btn selected" data-room="general">🌸 General</button>
+      <button class="room-btn" data-room="study">📚 Study</button>
+      <button class="room-btn" data-room="gossip">💬 Gossip</button>
+      <button class="room-btn" data-room="gaming">🎮 Gaming</button>
+    </div>
+
+    <button class="join-btn" id="joinBtn">Join Chat 💖</button>
+  </div>
+
+  <!-- Chat screen: join karne ke baad dikhegi -->
+  <div class="chat-box hidden" id="chatBox">
+    <div class="chat-header" id="chatHeader">💬 Mini Chat</div>
 
     <div class="online-bar" id="onlineBar">🟢 Online (0)</div>
 
@@ -18,7 +37,7 @@
     <div class="typing" id="typing"></div>
 
     <div class="input-area">
-      <input type="text" id="messageInput" placeholder="Message likho...">
+      <input type="text" id="messageInput" placeholder="Type a message...">
       <button id="sendBtn">Send 💖</button>
     </div>
   </div>
@@ -27,19 +46,58 @@
   <script>
     const socket = io();
 
-    // Naam poochna
-    const username = prompt('Tumhara naam kya hai? 🌸') || 'Anonymous';
+    // Join screen ki cheezein
+    const joinScreen = document.getElementById('joinScreen');
+    const nameInput = document.getElementById('nameInput');
+    const roomOptions = document.getElementById('roomOptions');
+    const joinBtn = document.getElementById('joinBtn');
 
-    // Server ko batao ke main aa gayi
-    socket.emit('join', username);
-
+    // Chat screen ki cheezein
+    const chatBox = document.getElementById('chatBox');
+    const chatHeader = document.getElementById('chatHeader');
     const messages = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const typingDiv = document.getElementById('typing');
     const onlineBar = document.getElementById('onlineBar');
 
-    // Abhi ka time nikalne wala function (jaise 11:30 PM)
+    // Join hone ke baad yeh dono set honge
+    let username = '';
+    let room = 'general';
+
+    // Room button dabane par us ko select karo
+    roomOptions.addEventListener('click', (e) => {
+      const btn = e.target.closest('.room-btn');
+      if (!btn) return;
+
+      document.querySelectorAll('.room-btn').forEach((b) => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      room = btn.dataset.room;
+    });
+
+    // Chat join karne wala function
+    function joinChat() {
+      username = nameInput.value.trim() || 'Anonymous';
+
+      // Server ko batao ke main kaun hoon aur kis room mein aa rahi hoon
+      socket.emit('join', { name: username, room: room });
+
+      // Join screen chupao, chat screen dikhao
+      joinScreen.classList.add('hidden');
+      chatBox.classList.remove('hidden');
+      chatHeader.textContent = '💬 Mini Chat · #' + room;
+      input.focus();
+    }
+
+    joinBtn.addEventListener('click', joinChat);
+
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinChat();
+    });
+
+    nameInput.focus();
+
+    // Get the current time (like 11:30 PM)
     function getTime() {
       return new Date().toLocaleTimeString([], {
         hour: '2-digit',
@@ -47,7 +105,7 @@
       });
     }
 
-    // Normal message dikhane wala function
+    // Show a normal message on screen
     function addMessage(text, type, name, time) {
       const div = document.createElement('div');
       div.classList.add('message', type);
@@ -74,7 +132,7 @@
       messages.scrollTop = messages.scrollHeight;
     }
 
-    // System notice dikhane wala function (joined / left)
+    // Show a system notice (joined / left)
     function addSystemMessage(text) {
       const div = document.createElement('div');
       div.classList.add('system');
@@ -83,7 +141,7 @@
       messages.scrollTop = messages.scrollHeight;
     }
 
-    // Typing indicator ka timer
+    // Timer for the typing indicator
     let typingTimeout;
 
     function sendMessage() {
@@ -105,7 +163,7 @@
       if (e.key === 'Enter') sendMessage();
     });
 
-    // Jab likhna shuru karo to server ko batao
+    // When I start typing, tell the server
     input.addEventListener('input', () => {
       socket.emit('typing');
       clearTimeout(typingTimeout);
@@ -114,23 +172,23 @@
       }, 3000);
     });
 
-    // Doosron ka message aaye to dikhao
+    // When someone else sends a message, show it
     socket.on('chat message', (data) => {
       typingDiv.textContent = '';
       addMessage(data.text, 'other', data.name, data.time);
     });
 
-    // Koi joined ya left
+    // Someone joined or left
     socket.on('system message', (text) => {
       addSystemMessage(text);
     });
 
-    // Online users ki nayi list aayi
+    // New online list for this room
     socket.on('online users', (users) => {
       onlineBar.textContent = '🟢 Online (' + users.length + '): ' + users.join(', ');
     });
 
-    // Koi likh raha hai
+    // Someone is typing
     socket.on('typing', (name) => {
       typingDiv.textContent = name + ' is typing... ✍️';
     });
