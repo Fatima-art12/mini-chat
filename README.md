@@ -2,11 +2,17 @@
 
 A real-time, multi-room chat app with user profiles, photo avatars and persistent message history. Built with Node.js, Express, Socket.io and MySQL.
 
-<img width="321" height="407" alt="image" src="https://github.com/user-attachments/assets/8b63bf03-22da-45a6-98a1-84c493e63cc2" />
-<img width="335" height="552" alt="image" src="https://github.com/user-attachments/assets/c06df20a-695a-478d-837d-3a83e306b3d4" />
-<img width="329" height="500" alt="image" src="https://github.com/user-attachments/assets/cfcb2c88-1a7a-4243-a3b3-a6974b182091" />
-<img width="362" height="508" alt="image" src="https://github.com/user-attachments/assets/9f9589fd-76a6-4aac-bb71-6b575220d572" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/8b63bf03-22da-45a6-98a1-84c493e63cc2" alt="Pick a room" height="380">
+  &nbsp;
+  <img src="https://github.com/user-attachments/assets/c06df20a-695a-478d-837d-3a83e306b3d4" alt="Edit profile" height="380">
+</p>
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/cfcb2c88-1a7a-4243-a3b3-a6974b182091" alt="Chat with emoji picker" height="380">
+  &nbsp;
+  <img src="https://github.com/user-attachments/assets/9f9589fd-76a6-4aac-bb71-6b575220d572" alt="Chat room" height="380">
+</p>
 
 ## ✨ Features
 
@@ -79,7 +85,6 @@ mini-chat/
 ├── public/
 │   ├── index.html      # All screens: profile, room picker, chat
 │   └── style.css       # Styling and mobile layout
-├── screenshots/        # Images used in this README
 ├── database.sql        # Database and table setup
 ├── .env.example        # Example settings (copy to .env)
 ├── server.js           # Express + Socket.io + MySQL server
