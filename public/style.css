@@ -13,7 +13,109 @@ body {
   display: none !important;
 }
 
-/* ---------- Join screen ---------- */
+/* ---------- Avatar (gol picture) ---------- */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #ffe0ef;
+  color: #b06fd8;
+  font-weight: bold;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Jis avatar par click karke bara dekh sakte hain */
+.avatar.clickable {
+  cursor: zoom-in;
+}
+
+#profileAvatar {
+  cursor: default;
+}
+
+.avatar.small {
+  width: 32px;
+  height: 32px;
+  font-size: 17px;
+}
+
+.avatar.medium {
+  width: 64px;
+  height: 64px;
+  font-size: 32px;
+}
+
+.avatar.big {
+  width: 96px;
+  height: 96px;
+  margin: 14px auto 10px;
+  font-size: 48px;
+  border: 3px solid #ff9ecb;
+}
+
+/* Bari picture (viewer mein) */
+.avatar.huge {
+  width: min(75vw, 300px);
+  height: min(75vw, 300px);
+  font-size: 140px;
+  border: 4px solid white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  cursor: default;
+}
+
+/* ---------- Picture viewer (bara dekhne wali screen) ---------- */
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(70, 30, 90, 0.72);
+  cursor: pointer;
+}
+
+.photo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.photo-name {
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.photo-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.photo-close:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- Profile aur Room screen ---------- */
 .join-box {
   width: 380px;
   box-sizing: border-box;
@@ -25,20 +127,20 @@ body {
 }
 
 .join-title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: bold;
   color: #b06fd8;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
 }
 
 .join-label {
-  margin: 18px 0 8px;
+  margin: 16px 0 8px;
   font-size: 14px;
   font-weight: bold;
   color: #8b6cff;
 }
 
-.join-box input {
+.join-box input[type="text"] {
   width: 100%;
   box-sizing: border-box;
   padding: 12px 16px;
@@ -49,8 +151,83 @@ body {
   text-align: center;
 }
 
-.join-box input:focus {
+.join-box input[type="text"]:focus {
   border-color: #ff9ecb;
+}
+
+.upload-btn {
+  padding: 10px 18px;
+  border: 2px solid #ffd6e8;
+  border-radius: 20px;
+  background: white;
+  color: #8b6cff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.upload-btn:hover {
+  background: #fff0f7;
+}
+
+.avatar-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.avatar-option {
+  padding: 8px 0;
+  border: 2px solid #ffd6e8;
+  border-radius: 14px;
+  background: white;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.avatar-option:hover {
+  background: #fff0f7;
+}
+
+.avatar-option.selected {
+  border-color: #b06fd8;
+  background: #f6ecff;
+}
+
+.form-error {
+  min-height: 18px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #e0457b;
+}
+
+.link-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: #8b6cff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.profile-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hello {
+  font-size: 22px;
+  font-weight: bold;
+  color: #b06fd8;
+  word-break: break-word;
 }
 
 .room-options {
@@ -82,7 +259,7 @@ body {
 
 .join-btn {
   width: 100%;
-  margin-top: 24px;
+  margin-top: 18px;
   padding: 14px;
   border: none;
   border-radius: 20px;
@@ -110,12 +287,45 @@ body {
 }
 
 .chat-header {
+  position: relative;
   background: linear-gradient(135deg, #ff9ecb, #b69cff);
   color: white;
   padding: 18px;
   font-size: 20px;
   font-weight: bold;
   text-align: center;
+}
+
+/* Header ke left (🚪) aur right (⋮) ke chhote gol buttons */
+.leave-btn,
+.chat-menu-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.leave-btn {
+  left: 12px;
+}
+
+.chat-menu-btn {
+  right: 12px;
+  font-size: 20px;
+}
+
+.leave-btn:hover,
+.chat-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .online-bar {
@@ -139,25 +349,67 @@ body {
   background: #fff8fc;
 }
 
+/* Ek row: avatar + message bubble + ⋮ button */
+.msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 92%;
+}
+
+.msg-row.other {
+  align-self: flex-start;
+}
+
+.msg-row.mine {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
 .message {
-  max-width: 75%;
+  min-width: 0;
   padding: 10px 14px;
   border-radius: 18px;
   font-size: 15px;
-  word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 .message.other {
   background: #e8e0ff;
-  align-self: flex-start;
   border-bottom-left-radius: 4px;
 }
 
 .message.mine {
   background: #ff9ecb;
   color: white;
-  align-self: flex-end;
   border-bottom-right-radius: 4px;
+}
+
+/* Delete hua message */
+.message.deleted {
+  background: #f3eef7;
+  color: #a78bba;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Har message ke saath chhota ⋮ button */
+.msg-menu-btn {
+  flex-shrink: 0;
+  align-self: center;
+  width: 22px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #c9a6e0;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.msg-menu-btn:hover {
+  color: #b06fd8;
 }
 
 .sender {
@@ -192,8 +444,116 @@ body {
   background: #fff8fc;
 }
 
+/* ---------- Chhota menu (Delete / Clear options) ---------- */
+.action-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 210px;
+  padding: 6px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(176, 111, 216, 0.35);
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: #6b4f8a;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #fff0f7;
+}
+
+.menu-item.danger {
+  color: #e0457b;
+}
+
+/* ---------- Emoji picker ---------- */
+.emoji-panel {
+  background: #fff8fc;
+  border-top: 1px solid #ffe0ef;
+}
+
+.emoji-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px 2px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #8b6cff;
+}
+
+.emoji-close {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #ffe0ef;
+  color: #b06fd8;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.emoji-close:hover {
+  background: #ff9ecb;
+  color: white;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 110px;
+  overflow-y: auto;
+  padding: 4px 10px 8px;
+}
+
+.emoji-item {
+  border: none;
+  background: none;
+  font-size: 22px;
+  padding: 4px 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.emoji-item:hover {
+  background: #ffe0ef;
+  transform: scale(1.15);
+}
+
+.emoji-btn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid #ffd6e8;
+  border-radius: 50%;
+  background: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.emoji-btn:hover {
+  background: #fff0f7;
+  transform: scale(1.08);
+}
+
+/* ---------- Input area ---------- */
 .input-area {
   display: flex;
+  align-items: center;
   gap: 8px;
   padding: 12px;
   background: white;
@@ -214,7 +574,7 @@ body {
   border-color: #ff9ecb;
 }
 
-.input-area button {
+#sendBtn {
   padding: 12px 18px;
   border: none;
   border-radius: 20px;
@@ -224,7 +584,7 @@ body {
   cursor: pointer;
 }
 
-.input-area button:hover {
+#sendBtn:hover {
   transform: scale(1.05);
 }
 

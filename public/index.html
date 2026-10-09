@@ -7,12 +7,33 @@
 </head>
 <body>
 
-  <!-- Join screen: name + room choose karne ki screen -->
-  <div class="join-box" id="joinScreen">
-    <div class="join-title">💬 Mini Chat</div>
+  <!-- Screen 1: Profile (naam + picture) -->
+  <div class="join-box hidden" id="profileScreen">
+    <div class="join-title" id="profileTitle">👤 Create your profile</div>
 
-    <p class="join-label">What is your name?</p>
-    <input type="text" id="nameInput" placeholder="Your name..." maxlength="20">
+    <div class="avatar big" id="profileAvatar"></div>
+
+    <button class="upload-btn" id="uploadBtn">📷 Upload photo</button>
+    <input type="file" id="photoInput" accept="image/*" class="hidden">
+
+    <p class="join-label">...or pick an avatar</p>
+    <div class="avatar-options" id="avatarOptions"></div>
+
+    <p class="join-label">Your name</p>
+    <input type="text" id="profileName" placeholder="Your name..." maxlength="20">
+    <p class="form-error" id="profileError"></p>
+
+    <button class="join-btn" id="saveProfileBtn">Save profile 💖</button>
+    <button class="link-btn hidden" id="cancelProfileBtn">Cancel</button>
+  </div>
+
+  <!-- Screen 2: Room chunna -->
+  <div class="join-box hidden" id="joinScreen">
+    <div class="profile-summary">
+      <div class="avatar medium" id="joinAvatar"></div>
+      <div class="hello" id="helloText">Hi 👋</div>
+      <button class="link-btn" id="editProfileBtn">✏️ Edit profile</button>
+    </div>
 
     <p class="join-label">Pick a room</p>
     <div class="room-options" id="roomOptions">
@@ -25,9 +46,13 @@
     <button class="join-btn" id="joinBtn">Join Chat 💖</button>
   </div>
 
-  <!-- Chat screen: join karne ke baad dikhegi -->
+  <!-- Screen 3: Chat -->
   <div class="chat-box hidden" id="chatBox">
-    <div class="chat-header" id="chatHeader">💬 Mini Chat</div>
+    <div class="chat-header">
+      <button id="leaveBtn" class="leave-btn" title="Change room">🚪</button>
+      <span id="roomTitle">💬 Mini Chat</span>
+      <button id="chatMenuBtn" class="chat-menu-btn" title="Chat options">⋮</button>
+    </div>
 
     <div class="online-bar" id="onlineBar">🟢 Online (0)</div>
 
@@ -36,9 +61,31 @@
 
     <div class="typing" id="typing"></div>
 
+    <!-- Emoji ki list (shuru mein chhupi hoti hai) -->
+    <div class="emoji-panel hidden" id="emojiPanel">
+      <div class="emoji-header">
+        <span>Pick an emoji</span>
+        <button id="emojiClose" class="emoji-close" title="Close">✕</button>
+      </div>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+
     <div class="input-area">
+      <button id="emojiBtn" class="emoji-btn">😊</button>
       <input type="text" id="messageInput" placeholder="Type a message...">
       <button id="sendBtn">Send 💖</button>
+    </div>
+  </div>
+
+  <!-- Chhota menu (delete options isi mein aate hain) -->
+  <div class="action-menu hidden" id="actionMenu"></div>
+
+  <!-- NEW: picture bara dekhne wali screen -->
+  <div class="photo-viewer hidden" id="photoViewer">
+    <button class="photo-close" id="photoClose" title="Close">✕</button>
+    <div class="photo-card">
+      <div class="avatar huge" id="photoBig"></div>
+      <div class="photo-name" id="photoName"></div>
     </div>
   </div>
 
@@ -46,24 +93,347 @@
   <script>
     const socket = io();
 
-    // Join screen ki cheezein
+    // Allowed rooms
+    const ROOMS = ['general', 'study', 'gossip', 'gaming'];
+
+    // ---------- Saari cheezein pakdo ----------
+
+    // Screens
+    const profileScreen = document.getElementById('profileScreen');
     const joinScreen = document.getElementById('joinScreen');
-    const nameInput = document.getElementById('nameInput');
+    const chatBox = document.getElementById('chatBox');
+
+    // Profile screen
+    const profileTitle = document.getElementById('profileTitle');
+    const profileAvatar = document.getElementById('profileAvatar');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const photoInput = document.getElementById('photoInput');
+    const avatarOptions = document.getElementById('avatarOptions');
+    const profileName = document.getElementById('profileName');
+    const profileError = document.getElementById('profileError');
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+
+    // Room screen
+    const joinAvatar = document.getElementById('joinAvatar');
+    const helloText = document.getElementById('helloText');
+    const editProfileBtn = document.getElementById('editProfileBtn');
     const roomOptions = document.getElementById('roomOptions');
     const joinBtn = document.getElementById('joinBtn');
 
-    // Chat screen ki cheezein
-    const chatBox = document.getElementById('chatBox');
-    const chatHeader = document.getElementById('chatHeader');
+    // Chat screen
+    const roomTitle = document.getElementById('roomTitle');
+    const leaveBtn = document.getElementById('leaveBtn');
+    const chatMenuBtn = document.getElementById('chatMenuBtn');
     const messages = document.getElementById('messages');
     const input = document.getElementById('messageInput');
     const sendBtn = document.getElementById('sendBtn');
     const typingDiv = document.getElementById('typing');
     const onlineBar = document.getElementById('onlineBar');
+    const emojiBtn = document.getElementById('emojiBtn');
+    const emojiPanel = document.getElementById('emojiPanel');
+    const emojiGrid = document.getElementById('emojiGrid');
+    const emojiClose = document.getElementById('emojiClose');
+    const actionMenu = document.getElementById('actionMenu');
 
-    // Join hone ke baad yeh dono set honge
-    let username = '';
+    // Picture viewer
+    const photoViewer = document.getElementById('photoViewer');
+    const photoBig = document.getElementById('photoBig');
+    const photoName = document.getElementById('photoName');
+    const photoClose = document.getElementById('photoClose');
+
+    // Meri profile ({ name, avatar, photo }) aur chuna hua room
+    let profile = null;
     let room = 'general';
+
+    // ---------- Yaaddasht (browser storage) ----------
+    // localStorage: hamesha yaad rehta hai (profile, "delete for me" wale messages)
+    // sessionStorage: sirf isi tab mein (refresh par wapas usi room mein jaane ke liye)
+    function safeGet(storage, key) {
+      try { return storage.getItem(key); } catch (e) { return null; }
+    }
+
+    function safeSet(storage, key, value) {
+      try { storage.setItem(key, value); } catch (e) { /* ignore */ }
+    }
+
+    function safeRemove(storage, key) {
+      try { storage.removeItem(key); } catch (e) { /* ignore */ }
+    }
+
+    function loadProfile() {
+      const saved = safeGet(localStorage, 'miniChatProfile');
+      if (!saved) return null;
+
+      try {
+        const p = JSON.parse(saved);
+        if (p && typeof p.name === 'string' && p.name) {
+          return { name: p.name, avatar: p.avatar || '', photo: p.photo || '' };
+        }
+      } catch (e) { /* ignore */ }
+
+      return null;
+    }
+
+    // ---------- "Delete for me" ki yaaddasht ----------
+
+    // Jin messages ko "delete for me" kiya hai unki ids
+    function getHiddenIds() {
+      try {
+        return JSON.parse(safeGet(localStorage, 'miniChatHidden') || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function hideMessageForMe(id) {
+      const ids = getHiddenIds();
+      ids.push(Number(id));
+      safeSet(localStorage, 'miniChatHidden', JSON.stringify(ids.slice(-500)));
+    }
+
+    // "Clear chat for me" kab kiya tha (har room ka alag)
+    function getClearedAt() {
+      try {
+        return JSON.parse(safeGet(localStorage, 'miniChatCleared') || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function setClearedNow() {
+      const cleared = getClearedAt();
+      cleared[room] = Date.now();
+      safeSet(localStorage, 'miniChatCleared', JSON.stringify(cleared));
+    }
+
+    // ---------- Screens badalna ----------
+    function showScreen(screen) {
+      profileScreen.classList.add('hidden');
+      joinScreen.classList.add('hidden');
+      chatBox.classList.add('hidden');
+      screen.classList.remove('hidden');
+    }
+
+    // ---------- Avatar dikhana ----------
+    // Photo ho to <img>, emoji ho to emoji, kuch na ho to naam ka pehla harf
+    function fillAvatar(el, avatar, name) {
+      el.innerHTML = '';
+      el.dataset.name = name || '';
+      el.classList.add('clickable');
+
+      if (avatar && avatar.startsWith('data:image/')) {
+        const img = document.createElement('img');
+        img.src = avatar;
+        img.alt = name || '';
+        el.appendChild(img);
+      } else if (avatar) {
+        el.textContent = avatar;
+      } else {
+        el.textContent = (name || '?').charAt(0).toUpperCase();
+      }
+    }
+
+    // Tasveer ko size x size ki square banao (beech ka hissa kaat kar)
+    function makeSquare(img, size, quality) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2;
+      const sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+
+      return canvas.toDataURL('image/jpeg', quality);
+    }
+
+    // Photo se do copies banao: chhoti (96px, chat ke liye) aur badi (320px, bara dekhne ke liye)
+    function resizeImage(file, onDone, onError) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const img = new Image();
+
+        img.onload = () => {
+          const small = makeSquare(img, 96, 0.8);
+          const big = makeSquare(img, 320, 0.82);
+          onDone(small, big);
+        };
+
+        img.onerror = onError;
+        img.src = e.target.result;
+      };
+
+      reader.onerror = onError;
+      reader.readAsDataURL(file);
+    }
+
+    // ---------- Picture bara dekhna ----------
+
+    function openPhotoViewer(avatarEl) {
+      const name = avatarEl.dataset.name || '';
+      const smallImg = avatarEl.querySelector('img');
+
+      photoBig.innerHTML = '';
+
+      if (smallImg) {
+        // Photo hai: badi wali dikhao
+        const big = document.createElement('img');
+        big.alt = name;
+
+        // Meri apni photo ho to apne browser se, warna server se
+        if (profile && name === profile.name && profile.photo) {
+          big.src = profile.photo;
+        } else {
+          big.src = '/photo?name=' + encodeURIComponent(name);
+        }
+
+        // Badi photo na mile to chhoti hi dikha do
+        big.onerror = () => {
+          big.onerror = null;
+          big.src = smallImg.src;
+        };
+
+        photoBig.appendChild(big);
+      } else {
+        // Emoji ya naam ka pehla harf: bara karke dikhao
+        photoBig.textContent = avatarEl.textContent;
+      }
+
+      photoName.textContent = name;
+      photoViewer.classList.remove('hidden');
+    }
+
+    function closePhotoViewer() {
+      photoViewer.classList.add('hidden');
+    }
+
+    // Kisi bhi avatar par click karo to bara ho jaye
+    document.addEventListener('click', (e) => {
+      const av = e.target.closest('.avatar.clickable');
+      if (!av) return;
+
+      // Profile banate waqt wale preview aur khud viewer ko chhor do
+      if (av.id === 'profileAvatar' || av.closest('#photoViewer')) return;
+
+      openPhotoViewer(av);
+    });
+
+    // Viewer par kahin bhi click karo ya ✕ dabao to band
+    photoViewer.addEventListener('click', closePhotoViewer);
+    photoClose.addEventListener('click', closePhotoViewer);
+
+    // ---------- Screen 1: Profile ----------
+
+    const AVATARS = ['🐱', '🐰', '🦊', '🐼', '🦋', '🌸', '🍓', '🌙'];
+    let tempAvatar = AVATARS[0];
+    let tempPhoto = '';
+
+    // Har emoji avatar ka ek button banao
+    AVATARS.forEach((emoji) => {
+      const btn = document.createElement('button');
+      btn.classList.add('avatar-option');
+      btn.textContent = emoji;
+      btn.addEventListener('click', () => {
+        tempAvatar = emoji;
+        tempPhoto = '';
+        refreshProfilePreview();
+      });
+      avatarOptions.appendChild(btn);
+    });
+
+    // Bara preview aur chuna hua emoji update karo
+    function refreshProfilePreview() {
+      fillAvatar(profileAvatar, tempAvatar, profileName.value.trim());
+
+      avatarOptions.querySelectorAll('.avatar-option').forEach((btn) => {
+        btn.classList.toggle('selected', btn.textContent === tempAvatar);
+      });
+    }
+
+    profileName.addEventListener('input', refreshProfilePreview);
+
+    // Profile screen kholo (pehli baar: "Create", baad mein: "Edit")
+    function openProfileScreen() {
+      const editing = profile !== null;
+
+      profileTitle.textContent = editing ? '✏️ Edit profile' : '👤 Create your profile';
+      profileName.value = editing ? profile.name : (safeGet(localStorage, 'miniChatName') || '');
+      tempAvatar = editing ? profile.avatar : AVATARS[0];
+      tempPhoto = editing ? (profile.photo || '') : '';
+      profileError.textContent = '';
+      cancelProfileBtn.classList.toggle('hidden', !editing);
+
+      refreshProfilePreview();
+      showScreen(profileScreen);
+      profileName.focus();
+    }
+
+    // Photo upload
+    uploadBtn.addEventListener('click', () => photoInput.click());
+
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        profileError.textContent = 'Please choose an image file.';
+        return;
+      }
+
+      resizeImage(
+        file,
+        (smallUrl, bigUrl) => {
+          tempAvatar = smallUrl;
+          tempPhoto = bigUrl;
+          profileError.textContent = '';
+          refreshProfilePreview();
+        },
+        () => {
+          profileError.textContent = 'Could not read this image. Try another one.';
+        }
+      );
+
+      photoInput.value = '';
+    });
+
+    // Profile save karo
+    function saveProfileNow() {
+      const name = profileName.value.trim();
+
+      if (!name) {
+        profileError.textContent = 'Please enter your name.';
+        profileName.focus();
+        return;
+      }
+
+      profile = { name: name, avatar: tempAvatar, photo: tempPhoto };
+      safeSet(localStorage, 'miniChatProfile', JSON.stringify(profile));
+      showRoomScreen();
+    }
+
+    saveProfileBtn.addEventListener('click', saveProfileNow);
+
+    profileName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveProfileNow();
+    });
+
+    cancelProfileBtn.addEventListener('click', showRoomScreen);
+
+    // ---------- Screen 2: Room chunna ----------
+
+    function showRoomScreen() {
+      fillAvatar(joinAvatar, profile.avatar, profile.name);
+      helloText.textContent = 'Hi, ' + profile.name + ' 👋';
+      showScreen(joinScreen);
+    }
+
+    editProfileBtn.addEventListener('click', openProfileScreen);
 
     // Room button dabane par us ko select karo
     roomOptions.addEventListener('click', (e) => {
@@ -77,25 +447,186 @@
 
     // Chat join karne wala function
     function joinChat() {
-      username = nameInput.value.trim() || 'Anonymous';
+      safeSet(sessionStorage, 'miniChatRoom', room);
 
-      // Server ko batao ke main kaun hoon aur kis room mein aa rahi hoon
-      socket.emit('join', { name: username, room: room });
+      // Server ko batao ke main kaun hoon, meri picture kya hai, aur kis room mein aa rahi hoon
+      socket.emit('join', {
+        name: profile.name,
+        room: room,
+        avatar: profile.avatar,
+        photo: profile.photo || ''
+      });
 
-      // Join screen chupao, chat screen dikhao
-      joinScreen.classList.add('hidden');
-      chatBox.classList.remove('hidden');
-      chatHeader.textContent = '💬 Mini Chat · #' + room;
+      showScreen(chatBox);
+      roomTitle.textContent = '💬 Mini Chat · #' + room;
       input.focus();
     }
 
     joinBtn.addEventListener('click', joinChat);
 
-    nameInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') joinChat();
+    // 🚪 button: room chhodo aur room screen par wapas jao (naam dobara nahi poochega)
+    leaveBtn.addEventListener('click', () => {
+      safeRemove(sessionStorage, 'miniChatRoom');
+      location.reload();
     });
 
-    nameInput.focus();
+    // ---------- Chhota menu (⋮ dabane par khulta hai) ----------
+
+    // items = [{ label, danger, onClick }, ...]
+    function openMenu(x, y, items) {
+      actionMenu.innerHTML = '';
+
+      items.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.classList.add('menu-item');
+        if (item.danger) btn.classList.add('danger');
+        btn.textContent = item.label;
+        btn.addEventListener('click', () => {
+          closeMenu();
+          item.onClick();
+        });
+        actionMenu.appendChild(btn);
+      });
+
+      actionMenu.classList.remove('hidden');
+
+      // Menu screen se bahar na nikle
+      const rect = actionMenu.getBoundingClientRect();
+      const left = Math.min(x, window.innerWidth - rect.width - 8);
+      const top = Math.min(y, window.innerHeight - rect.height - 8);
+      actionMenu.style.left = Math.max(8, left) + 'px';
+      actionMenu.style.top = Math.max(8, top) + 'px';
+    }
+
+    function closeMenu() {
+      actionMenu.classList.add('hidden');
+    }
+
+    // Menu ke bahar click karo to band ho jaye
+    document.addEventListener('click', (e) => {
+      if (!actionMenu.contains(e.target)) closeMenu();
+    });
+
+    // ---------- Delete aur Clear ----------
+
+    // Ek message sirf meri screen se hatao
+    function deleteForMe(row) {
+      const id = row.dataset.id;
+      if (id) hideMessageForMe(id);
+      row.remove();
+    }
+
+    // Apna message sab ke liye delete karo (server sab ko bata dega)
+    function deleteForEveryone(row) {
+      const id = row.dataset.id;
+      if (!id) return;
+      socket.emit('delete message', { id: Number(id) });
+    }
+
+    // Delete hua message ki jagah "This message was deleted" dikhao
+    function markDeleted(row) {
+      const bubble = row.querySelector('.message');
+      if (bubble) {
+        bubble.className = 'message deleted';
+        bubble.textContent = '🚫 This message was deleted';
+      }
+
+      const menuBtn = row.querySelector('.msg-menu-btn');
+      if (menuBtn) menuBtn.remove();
+    }
+
+    // Chat ki screen saaf karo
+    function resetChatView() {
+      messages.innerHTML = '';
+      lastDateKey = '';
+    }
+
+    // Sirf meri screen par chat saaf karo (doosron ki chat waisi hi rahegi)
+    function clearForMe() {
+      const ok = confirm('Clear this chat on your screen? Other people will still see their messages.');
+      if (!ok) return;
+
+      setClearedNow();
+      resetChatView();
+      addSystemMessage('🧹 Chat cleared (only for you)');
+    }
+
+    // Header ke ⋮ button par chat options
+    chatMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+
+      const rect = chatMenuBtn.getBoundingClientRect();
+      openMenu(rect.right - 210, rect.bottom + 6, [
+        { label: '🧹 Clear chat for me', onClick: clearForMe }
+      ]);
+    });
+
+    // ---------- Emoji picker ----------
+
+    // Emojis ki list (apne pasand ke aur bhi jod sakti ho)
+    const emojis = [
+      '😀', '😂', '😇', '😍', '🥰', '😘', '😎', '🤩',
+      '😭', '😅', '🤭', '😜', '🥺', '😴', '🤔', '🙄',
+      '😡', '🥳', '👍', '👏', '🙌', '🙏', '💪', '🔥',
+      '✨', '🌸', '💖', '💕', '💜', '💗', '🎉', '☕',
+      '🍕', '🍫', '📚', '🎮', '🌷', '🦋', '🌈', '⭐'
+    ];
+
+    // Har emoji ka ek button banao aur grid mein rakho
+    emojis.forEach((emoji) => {
+      const btn = document.createElement('button');
+      btn.classList.add('emoji-item');
+      btn.textContent = emoji;
+      btn.addEventListener('click', () => insertEmoji(emoji));
+      emojiGrid.appendChild(btn);
+    });
+
+    // Emoji ko message box mein wahan lagao jahan cursor hai
+    function insertEmoji(emoji) {
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+
+      input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+
+      const pos = start + emoji.length;
+      input.setSelectionRange(pos, pos);
+      input.focus();
+
+      // "typing..." indicator bhi chal jaye
+      input.dispatchEvent(new Event('input'));
+    }
+
+    // Emoji panel band karne wala function
+    function closeEmojiPanel() {
+      emojiPanel.classList.add('hidden');
+    }
+
+    // 😊 button dabane par panel kholo ya band karo
+    emojiBtn.addEventListener('click', () => {
+      emojiPanel.classList.toggle('hidden');
+    });
+
+    // Cross (✕) button dabane par band karo
+    emojiClose.addEventListener('click', closeEmojiPanel);
+
+    // Panel ke bahar kahin bhi click karo to band ho jaye
+    document.addEventListener('click', (e) => {
+      const panelOpen = !emojiPanel.classList.contains('hidden');
+      const clickedInside = emojiPanel.contains(e.target) || emojiBtn.contains(e.target);
+
+      if (panelOpen && !clickedInside) closeEmojiPanel();
+    });
+
+    // Esc dabane par emoji panel, menu aur picture viewer band ho jaye
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeEmojiPanel();
+        closeMenu();
+        closePhotoViewer();
+      }
+    });
+
+    // ---------- Screen 3: Chat ----------
 
     // Get the current time (like 11:30 PM)
     function getTime() {
@@ -105,31 +636,70 @@
       });
     }
 
-    // Show a normal message on screen
-    function addMessage(text, type, name, time) {
-      const div = document.createElement('div');
-      div.classList.add('message', type);
+    // Ek message dikhao: avatar + bubble + ⋮ button
+    function addMessage(text, type, name, time, avatar, id) {
+      const row = document.createElement('div');
+      row.classList.add('msg-row', type);
+      if (id) row.dataset.id = id;
 
-      if (name) {
+      const av = document.createElement('div');
+      av.classList.add('avatar', 'small');
+      fillAvatar(av, avatar, name);
+
+      const bubble = document.createElement('div');
+      bubble.classList.add('message', type);
+
+      // Doosron ke message par unka naam dikhao
+      if (type === 'other' && name) {
         const label = document.createElement('div');
         label.classList.add('sender');
         label.textContent = name;
-        div.appendChild(label);
+        bubble.appendChild(label);
       }
 
       const msgText = document.createElement('span');
       msgText.textContent = text;
-      div.appendChild(msgText);
+      bubble.appendChild(msgText);
 
       if (time) {
         const timeLabel = document.createElement('div');
         timeLabel.classList.add('time');
         timeLabel.textContent = time;
-        div.appendChild(timeLabel);
+        bubble.appendChild(timeLabel);
       }
 
-      messages.appendChild(div);
+      // Message ke saath chhota ⋮ button
+      const menuBtn = document.createElement('button');
+      menuBtn.classList.add('msg-menu-btn');
+      menuBtn.textContent = '⋮';
+      menuBtn.title = 'Message options';
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        const items = [
+          { label: '🗑️ Delete for me', onClick: () => deleteForMe(row) }
+        ];
+
+        // "Delete for everyone" sirf apne message par (jab message ki id mil chuki ho)
+        if (type === 'mine' && row.dataset.id) {
+          items.push({
+            label: '🗑️ Delete for everyone',
+            danger: true,
+            onClick: () => deleteForEveryone(row)
+          });
+        }
+
+        const rect = menuBtn.getBoundingClientRect();
+        openMenu(rect.left, rect.bottom + 4, items);
+      });
+
+      row.appendChild(av);
+      row.appendChild(bubble);
+      row.appendChild(menuBtn);
+      messages.appendChild(row);
       messages.scrollTop = messages.scrollHeight;
+
+      return row;
     }
 
     // Show a system notice (joined / left / date)
@@ -141,7 +711,7 @@
       messages.scrollTop = messages.scrollHeight;
     }
 
-    // NEW: din ka label banao: Today / Yesterday / 3 Oct 2026
+    // Din ka label banao: Today / Yesterday / 3 Oct 2026
     function getDateLabel(date) {
       const today = new Date();
       const yesterday = new Date();
@@ -157,7 +727,7 @@
       });
     }
 
-    // NEW: aakhri dikhaya hua din yaad rakho, din badle to hi naya label dikhao
+    // Aakhri dikhaya hua din yaad rakho, din badle to hi naya label dikhao
     let lastDateKey = '';
 
     function showDateIfNew(date) {
@@ -168,6 +738,9 @@
       addSystemMessage(getDateLabel(date));
     }
 
+    // Jo messages abhi bheje hain aur server se unki id ka intezar hai
+    const pendingRows = {};
+
     // Timer for the typing indicator
     let typingTimeout;
 
@@ -176,13 +749,19 @@
       if (text === '') return;
 
       const time = getTime();
+      const clientId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 
       showDateIfNew(new Date());
-      addMessage(text, 'mine', null, time);
-      socket.emit('chat message', { name: username, text: text, time: time });
+      const row = addMessage(text, 'mine', profile.name, time, profile.avatar);
+      pendingRows[clientId] = row;
+
+      socket.emit('chat message', { text: text, time: time, clientId: clientId });
       socket.emit('stop typing');
       clearTimeout(typingTimeout);
       input.value = '';
+
+      // Message bhejne ke baad emoji panel band kar do
+      closeEmojiPanel();
     }
 
     sendBtn.addEventListener('click', sendMessage);
@@ -200,15 +779,29 @@
       }, 3000);
     });
 
+    // Server ne mere message ki id bhej di (ab main usko delete kar sakti hoon)
+    socket.on('message saved', (data) => {
+      const row = pendingRows[data.clientId];
+      if (row && data.id) row.dataset.id = data.id;
+      delete pendingRows[data.clientId];
+    });
+
     // Purane messages aaye (database se), din ke label ke saath
     socket.on('history', (oldMessages) => {
+      const hiddenIds = new Set(getHiddenIds());
+      const clearedAt = getClearedAt()[room] || 0;
+
       oldMessages.forEach((msg) => {
+        // "Delete for me" ya "Clear for me" wale messages dobara mat dikhao
+        if (hiddenIds.has(msg.id)) return;
+        if (new Date(msg.date).getTime() <= clearedAt) return;
+
         showDateIfNew(new Date(msg.date));
 
-        if (msg.name === username) {
-          addMessage(msg.text, 'mine', null, msg.time);
+        if (msg.name === profile.name) {
+          addMessage(msg.text, 'mine', profile.name, msg.time, profile.avatar, msg.id);
         } else {
-          addMessage(msg.text, 'other', msg.name, msg.time);
+          addMessage(msg.text, 'other', msg.name, msg.time, msg.avatar, msg.id);
         }
       });
     });
@@ -217,7 +810,13 @@
     socket.on('chat message', (data) => {
       typingDiv.textContent = '';
       showDateIfNew(new Date());
-      addMessage(data.text, 'other', data.name, data.time);
+      addMessage(data.text, 'other', data.name, data.time, data.avatar, data.id);
+    });
+
+    // Kisi ne apna ek message sab ke liye delete kiya
+    socket.on('message deleted', (data) => {
+      const row = messages.querySelector('.msg-row[data-id="' + data.id + '"]');
+      if (row) markDeleted(row);
     });
 
     // Someone joined or left
@@ -238,6 +837,25 @@
     socket.on('stop typing', () => {
       typingDiv.textContent = '';
     });
+
+    // ---------- Page khulte hi kya dikhana hai ----------
+    profile = loadProfile();
+
+    if (!profile) {
+      // Pehli baar: profile banao
+      openProfileScreen();
+    } else {
+      const savedRoom = safeGet(sessionStorage, 'miniChatRoom');
+
+      if (savedRoom && ROOMS.includes(savedRoom)) {
+        // Refresh hua hai: seedha usi room mein wapas
+        room = savedRoom;
+        joinChat();
+      } else {
+        // Nayi tab ya room badalna hai: room screen dikhao
+        showRoomScreen();
+      }
+    }
   </script>
 
 </body>
